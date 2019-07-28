@@ -18,6 +18,7 @@
 CC?=gcc
 CFLAGS+=-std=c99 -O2 -Wall -Wextra -Wpedantic -Iexternals/tree-sitter/lib/include \
   -Iincludes/
+export DIST_DIR?=$(CURDIR)/dist
 
 sources=$(wildcard src/*.c)
 
@@ -26,6 +27,9 @@ include version.mk
 all: dist
 
 -include $(sources:.c=.d)
+dist_dir:
+	rm -fr "$(DIST_DIR)"
+	mkdir "$(DIST_DIR)"
 
 version.mk: lisp/tree-sitter-pkg.el
 	@sed -n 's/(define-package ".*" "\([0-9\.]*\)"/VERSION=\1/p' lisp/tree-sitter-pkg.el > version.mk
@@ -45,6 +49,12 @@ externals/tree-sitter/libtree-sitter.o: externals/tree-sitter/lib/utf8proc/utf8p
 	      -o $@
 
 dist: tree-sitter-$(VERSION).tar
+
+develop: tree-sitter-module.so $(wildcard lisp/*.el) | dist_dir langs
+	$(foreach file,$^,ln -s $(CURDIR)/$(file) -t "$(DIST_DIR)";)
+
+langs: dist_dir
+	cd langs/python && $(MAKE) develop
 
 tree-sitter-%.tar: tree-sitter-module.so $(wildcard lisp/*.el)
 	mkdir "tree-sitter-$*"
@@ -67,9 +77,11 @@ submod:
 	cd externals/tree-sitter && git submodule update --init lib/utf8proc
 
 clean:
+	cd langs/python; $(MAKE) clean;
+	rm -fr "$(DIST_DIR)";
 	rm -f src/*.o src/*.d src/*.d.*
 	rm -f tree-sitter-module.so
 	rm -f externals/tree-sitter/libtree-sitter.o
 	rm -f version.mk $(wildcard tree-sitter-*.tar.gz)
 
-.PHONY: clean dist submod
+.PHONY: clean dist submod dist_dir

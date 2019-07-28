@@ -5,6 +5,7 @@
 *.d.*
 version.mk
 *.tar
+dist/
 
 # Emacs backup files
 *~
